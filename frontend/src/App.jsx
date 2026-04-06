@@ -2,31 +2,31 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './services/store';
-import useWebSocket from './hooks/useWebSocket';
+import { useAuthStore } from '../../../ecommerce/frontend/src/services/store';
+import useWebSocket from '../../../ecommerce/frontend/src/hooks/useWebSocket';
 import './styles/main.css';
 
 // Shop Layout
-import Navbar from './components/layout/Navbar';
-import Footer from './components/layout/Footer';
-import CartDrawer from './components/cart/CartDrawer';
-import ChatWidget from './components/chat/ChatWidget';
+import Navbar from '../../../ecommerce/frontend/src/components/layout/Navbar';
+import Footer from '../../../ecommerce/frontend/src/components/layout/Footer';
+import CartDrawer from '../../../ecommerce/frontend/src/components/cart/CartDrawer';
+import ChatWidget from '../../../ecommerce/frontend/src/components/chat/ChatWidget';
 
 // Shop Pages
-import HomePage from './pages/HomePage';
-import ProductsPage from './pages/ProductsPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrderSuccessPage from './pages/OrderSuccessPage';
-import OrdersPage from './pages/account/OrdersPage';
-import OrderDetailPage from './pages/account/OrderDetailPage';
-import ProfilePage from './pages/account/ProfilePage';
-import WishlistPage from './pages/account/WishlistPage';
-import NotificationsPage from './pages/account/NotificationsPage';
+import HomePage from '../../../ecommerce/frontend/src/pages/HomePage';
+import ProductsPage from '../../../ecommerce/frontend/src/pages/ProductsPage';
+import ProductDetailPage from '../../../ecommerce/frontend/src/pages/ProductDetailPage';
+import LoginPage from '../../../ecommerce/frontend/src/pages/auth/LoginPage';
+import RegisterPage from '../../../ecommerce/frontend/src/pages/auth/RegisterPage';
+import ForgotPasswordPage from '../../../ecommerce/frontend/src/pages/auth/ForgotPasswordPage';
+import CartPage from '../../../ecommerce/frontend/src/pages/CartPage';
+import CheckoutPage from '../../../ecommerce/frontend/src/pages/CheckoutPage';
+import OrderSuccessPage from '../../../ecommerce/frontend/src/pages/OrderSuccessPage';
+import OrdersPage from '../../../ecommerce/frontend/src/pages/account/OrdersPage';
+import OrderDetailPage from '../../../ecommerce/frontend/src/pages/account/OrderDetailPage';
+import ProfilePage from '../../../ecommerce/frontend/src/pages/account/ProfilePage';
+import WishlistPage from '../../../ecommerce/frontend/src/pages/account/WishlistPage';
+import NotificationsPage from '../../../ecommerce/frontend/src/pages/account/NotificationsPage';
 
 // Admin
 import AdminLayout from './components/admin/AdminLayout';
