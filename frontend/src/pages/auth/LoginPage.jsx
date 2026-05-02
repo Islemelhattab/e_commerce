@@ -25,7 +25,11 @@ export function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await login(form);
+    const payload = {
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+    };
+    const result = await login(payload);
     if (result.success) {
       toast.success('Connexion réussie !');
       navigate(redirect);

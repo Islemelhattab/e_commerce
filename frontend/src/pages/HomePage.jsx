@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { productAPI } from '../services/api';
 import ProductCard from '../components/products/ProductCard';
@@ -40,9 +40,21 @@ const CATEGORIES = [
   { name: 'Livres', slug: 'books', color: '#F0F9FF', emoji: null, count: '2,100+' },
 ];
 
-export default function HomePage() {
-  const navigate = useNavigate();
+const CURATED_BLOCKS = [
+  { title: 'Marques tunisiennes', detail: 'Une sélection locale mise à jour régulièrement.' },
+  { title: 'Produits pratiques', detail: 'Des articles utiles pour la maison et le quotidien.' },
+  { title: 'Offres limitées', detail: 'Des promotions temporaires sur des produits populaires.' },
+];
 
+const SHOPPING_IDEAS = [
+  { name: 'Travail et bureau', desc: 'Voir les produits utiles pour travailler', target: '/category/electronics' },
+  { name: 'Confort maison', desc: 'Voir les produits pour la maison', target: '/category/home' },
+  { name: 'Sport et forme', desc: 'Voir les produits pour le sport', target: '/category/sports' },
+  { name: 'Soins et beauté', desc: 'Voir les produits beauté', target: '/category/beauty' },
+  { name: 'Pack détente du soir', desc: 'Sélection rapide pour se relaxer', target: '/products?category_slug=home&ordering=-average_rating' },
+];
+
+export default function HomePage() {
   const { data: featured = [] } = useQuery({
     queryKey: ['featured'],
     queryFn: () => productAPI.getFeatured().then(r => r.data),
@@ -55,60 +67,78 @@ export default function HomePage() {
     queryKey: ['best-sellers'],
     queryFn: () => productAPI.getBestSellers().then(r => r.data),
   });
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => productAPI.getCategories().then(r => r.data.results || r.data || []),
+  });
 
   return (
     <div>
       {/* ===== HERO ===== */}
-      <section className="hero">
+      <section className="hero hero--radar">
         <div className="container">
           <div className="hero__grid">
             <div>
-              <div className="hero__eyebrow">Nouvelle Collection 2024</div>
+              <div className="hero__eyebrow">Nos meilleures sélections</div>
               <h1 className="hero__title">
-                Découvrez le<br/>
-                Shopping <em>Réinventé</em>
+                Le shopping devient
+                <br />
+                une <em>expérience simple</em>
               </h1>
               <p className="hero__subtitle">
-                Des milliers de produits premium, des prix imbattables, 
-                une expérience d'achat fluide et sécurisée.
+                Découvrez des produits utiles, bien notés et adaptés à vos besoins,
+                avec une navigation claire et rapide.
               </p>
               <div className="hero__actions">
                 <Link to="/products" className="btn btn-accent btn-xl">
-                  Découvrir maintenant
+                  Voir les produits
                 </Link>
-                <Link to="/category/new" className="btn btn-outline btn-xl" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                <Link to="/products?is_new=true" className="btn btn-outline btn-xl" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
                   Nouveautés
                 </Link>
               </div>
               <div className="hero__stats">
                 <div>
-                  <div className="hero__stat-num">50K+</div>
-                  <div className="hero__stat-label">Produits</div>
+                  <div className="hero__stat-num">12</div>
+                  <div className="hero__stat-label">Sélections mensuelles</div>
                 </div>
                 <div>
-                  <div className="hero__stat-num">200K+</div>
-                  <div className="hero__stat-label">Clients</div>
+                  <div className="hero__stat-num">24h</div>
+                  <div className="hero__stat-label">Livraison express</div>
                 </div>
                 <div>
                   <div className="hero__stat-num">4.9★</div>
-                  <div className="hero__stat-label">Note moyenne</div>
+                  <div className="hero__stat-label">Satisfaction clients</div>
                 </div>
               </div>
             </div>
             <div className="hero__image">
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(230,57,70,0.1), rgba(244,162,97,0.1))',
-                aspectRatio: '4/5', borderRadius: 'var(--radius-xl)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}>
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 01-8 0"/>
-                </svg>
+              <div className="hero-radar-card">
+                <div className="hero-radar-card__header">
+                  <span>Sélection active</span>
+                  <span>LIVE</span>
+                </div>
+                <div className="hero-radar-grid">
+                  {CURATED_BLOCKS.map((item) => (
+                    <div key={item.title} className="hero-radar-grid__item">
+                      <h4>{item.title}</h4>
+                      <p>{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="hero-radar-card__footer">Mise à jour des offres chaque semaine</div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="curation-strip">
+        <div className="container curation-strip__inner">
+          <p>Des produits clairs, utiles et faciles à comparer.</p>
+          <Link to="/products?ordering=-created_at" className="btn btn-primary btn-sm">
+            Voir les nouveautés
+          </Link>
         </div>
       </section>
 
@@ -151,19 +181,44 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="category-grid">
-            {CATEGORIES.map((cat, i) => (
+            {categories.map((cat, i) => (
               <Link
                 key={cat.slug}
                 to={`/category/${cat.slug}`}
                 className={`category-card animate-fadeInUp stagger-${i + 1}`}
-                style={{ textDecoration: 'none', background: cat.color }}
+                style={{ 
+                  textDecoration: 'none', 
+                  backgroundImage: `url(${cat.image || 'https://via.placeholder.com/400?text=ShopWave'})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
               >
                 <div className="category-card__overlay">
                   <div>
                     <div className="category-card__name">{cat.name}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{cat.count} produits</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{cat.products_count || 0} produits</div>
                   </div>
                 </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mood-lab">
+        <div className="container">
+          <div className="section-header">
+            <div>
+              <h2 className="section-title">Idées d'achat</h2>
+              <p className="section-subtitle">Choisissez un besoin pour aller plus vite.</p>
+            </div>
+          </div>
+          <div className="mood-lab__grid">
+            {SHOPPING_IDEAS.map((idea) => (
+              <Link key={idea.name} to={idea.target} className="mood-lab__card">
+                <h3>{idea.name}</h3>
+                <p>{idea.desc}</p>
+                <span>Voir la sélection</span>
               </Link>
             ))}
           </div>
@@ -198,17 +253,17 @@ export default function HomePage() {
           <div className="promo-banner">
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-accent)', marginBottom: 12 }}>
-                Offre limitée
+                Offre spéciale
               </div>
               <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 800, color: 'white', marginBottom: 12, fontFamily: 'var(--font-display)' }}>
-                Soldes d'été — Jusqu'à <span style={{ color: 'var(--color-accent)' }}>60% OFF</span>
+                Promotions du moment — Jusqu'à <span style={{ color: 'var(--color-accent)' }}>40% OFF</span>
               </h2>
               <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', marginBottom: 28, maxWidth: 480 }}>
-                Profitez de nos meilleures offres sur une sélection de produits premium. 
-                Durée limitée, ne manquez pas cette opportunité !
+                Profitez des meilleures réductions sur une sélection de produits
+                populaires. Offre limitée.
               </p>
               <Link to="/products?discount=true" className="btn btn-accent btn-lg">
-                Voir les offres
+                Voir les promotions
               </Link>
             </div>
           </div>

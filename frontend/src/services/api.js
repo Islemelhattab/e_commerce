@@ -7,10 +7,14 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const isAuthRoute = (url = '') => {
+  return ['/auth/login/', '/auth/register/', '/auth/refresh/'].some((path) => url.includes(path));
+};
+
 // Request interceptor - add auth token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && !isAuthRoute(config.url)) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -19,6 +23,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
+    if (error.response?.status === 401 && isAuthRoute(original?.url)) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       const refreshToken = localStorage.getItem('refresh_token');

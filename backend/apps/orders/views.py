@@ -331,16 +331,24 @@ class CreatePaymentIntentView(APIView):
         except Order.DoesNotExist:
             return Response({'error': 'Commande non trouvée'}, status=404)
 
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        intent = stripe.PaymentIntent.create(
-            amount=int(order.total * 1000),  # in millimes
-            currency='tnd',
-            metadata={'order_id': str(order.id), 'order_number': order.order_number},
-        )
-        order.stripe_payment_intent = intent.id
-        order.save()
+        if not settings.STRIPE_SECRET_KEY:
+            return Response(
+                {'error': 'Paiement carte indisponible: Stripe non configuré.'},
+                status=503
+            )
 
-        return Response({'client_secret': intent.client_secret})
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=int(order.total * 1000),  # in millimes
+                currency='tnd',
+                metadata={'order_id': str(order.id), 'order_number': order.order_number},
+            )
+            order.stripe_payment_intent = intent.id
+            order.save()
+            return Response({'client_secret': intent.client_secret})
+        except stripe.error.StripeError as exc:
+            return Response({'error': f'Erreur Stripe: {str(exc)}'}, status=502)
 
 
 class ValidateCouponView(APIView):

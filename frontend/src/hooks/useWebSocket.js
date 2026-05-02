@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../services/store';
 import toast from 'react-hot-toast';
 
-const WS_BASE = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
+const WS_BASE = process.env.REACT_APP_WS_URL;
 
 export function useWebSocket() {
   const { isAuthenticated } = useAuthStore();
@@ -12,7 +12,7 @@ export function useWebSocket() {
   const MAX_RECONNECT = 5;
 
   const connect = useCallback(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !WS_BASE) return;
 
     const token = localStorage.getItem('access_token');
     if (!token) return;

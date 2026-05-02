@@ -75,21 +75,38 @@ export const useCartStore = create(
       couponDiscount: 0,
 
       fetchCart: async () => {
+        // Don't fetch cart if user is not authenticated
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          set({ cart: null, isLoading: false });
+          return;
+        }
+
         set({ isLoading: true });
         try {
           const res = await cartAPI.getCart();
           set({ cart: res.data, isLoading: false });
-        } catch {
-          set({ isLoading: false });
+        } catch (error) {
+          console.error('Cart fetch error:', error);
+          set({ cart: null, isLoading: false });
+          // Don't show error toast on initial load to avoid annoying users
         }
       },
 
       addToCart: async (productId, variantId = null, quantity = 1) => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          return { success: false, requiresAuth: true, error: { detail: 'Connexion requise' } };
+        }
+
         try {
           await cartAPI.addToCart({ product_id: productId, variant_id: variantId, quantity });
           get().fetchCart();
           return { success: true };
         } catch (error) {
+          if (error.response?.status === 401) {
+            return { success: false, requiresAuth: true, error: error.response?.data };
+          }
           return { success: false, error: error.response?.data };
         }
       },
@@ -98,21 +115,27 @@ export const useCartStore = create(
         try {
           await cartAPI.updateQuantity(itemId, quantity);
           get().fetchCart();
-        } catch {}
+        } catch (error) {
+          console.error('Failed to update quantity:', error);
+        }
       },
 
       removeItem: async (itemId) => {
         try {
           await cartAPI.removeItem(itemId);
           get().fetchCart();
-        } catch {}
+        } catch (error) {
+          console.error('Failed to remove item:', error);
+        }
       },
 
       clearCart: async () => {
         try {
           await cartAPI.clearCart();
           set({ cart: null, coupon: null, couponDiscount: 0 });
-        } catch {}
+        } catch (error) {
+          console.error('Failed to clear cart:', error);
+        }
       },
 
       applyCoupon: (coupon, discount) => set({ coupon, couponDiscount: discount }),
@@ -134,14 +157,18 @@ export const useWishlistStore = create((set, get) => ({
     try {
       const res = await userAPI.getWishlist();
       set({ items: res.data });
-    } catch {}
+    } catch (error) {
+      console.error('Failed to fetch wishlist:', error);
+    }
   },
 
   toggle: async (productId) => {
     try {
       await userAPI.toggleWishlist(productId);
       get().fetchWishlist();
-    } catch {}
+    } catch (error) {
+      console.error('Failed to toggle wishlist:', error);
+    }
   },
 
   isInWishlist: (productId) => {

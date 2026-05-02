@@ -120,7 +120,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_is_in_wishlist(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return obj.wishlist_items.filter(user=request.user).exists()
+            from apps.users.models import Wishlist
+            return Wishlist.objects.filter(user=request.user, product=obj).exists()
         return False
 
 
@@ -128,7 +129,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.filter(is_active=True).select_related(
         'category', 'brand'
-    ).prefetch_related('images', 'variants')
+    ).prefetch_related(
+        'images', 
+        'variants',
+        'tags',
+        'attributes'
+    )
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProductFilter
     search_fields = ['name', 'description', 'sku', 'category__name', 'brand__name', 'tags__name']

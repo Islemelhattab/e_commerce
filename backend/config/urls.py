@@ -53,6 +53,8 @@ urlpatterns = [
     path('api/shipping/', include('apps.shipping.urls')),
     path('api/banners/', BannerView.as_view(), name='public-banners'),
     path('api/chat/', include('apps.chatbot.urls')),
+    path('api/ai/', include('apps.ai_assistant.urls')),
+    path('api/art/', include('apps.digital_art.urls')),
     # Router
     path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

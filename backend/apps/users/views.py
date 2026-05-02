@@ -55,9 +55,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'phone', 'cin', 'first_name', 'last_name',
             'full_name', 'avatar', 'avatar_url', 'date_of_birth',
-            'is_email_verified', 'is_phone_verified', 'date_joined'
+            'is_email_verified', 'is_phone_verified', 'date_joined', 'is_staff'
         ]
-        read_only_fields = ['id', 'email', 'is_email_verified', 'date_joined']
+        read_only_fields = ['id', 'email', 'is_email_verified', 'date_joined', 'is_staff']
 
     def get_avatar_url(self, obj):
         request = self.context.get('request')

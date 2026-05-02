@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     'apps.shipping',
     'apps.admin_api',
     'apps.chatbot',
+    'apps.ai_assistant',
+    'apps.digital_art',
 ]
 
 MIDDLEWARE = [

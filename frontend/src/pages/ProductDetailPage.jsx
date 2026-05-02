@@ -101,6 +101,9 @@ export default function ProductDetailPage() {
     setAddingToCart(false);
     if (result.success) {
       toast.success('Produit ajouté au panier !');
+    } else if (result.requiresAuth) {
+      toast.error('Veuillez vous connecter avant de continuer');
+      navigate(`/login?redirect=/products/${slug}`);
     } else {
       toast.error('Erreur lors de l\'ajout au panier');
     }
@@ -158,7 +161,14 @@ export default function ProductDetailPage() {
           <div>
             <div style={{ borderRadius: 'var(--radius-xl)', overflow: 'hidden', background: 'var(--color-surface-2)', aspectRatio: '1', marginBottom: 12, position: 'relative' }}>
               {images[selectedImage] ? (
-                <img src={images[selectedImage].image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={images[selectedImage].image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 24 24' fill='none' stroke='%239090A8' stroke-width='1.5'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9l4-4 4 4 4-4 4 4'/%3E%3Ccircle cx='9' cy='14' r='2'/%3E%3C/svg%3E";
+                    e.target.style.objectFit = 'none';
+                    e.target.style.background = 'var(--color-surface-3, #F0F0F8)';
+                  }}
+                />
               ) : (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--color-border-dark)" strokeWidth="1">
@@ -184,7 +194,14 @@ export default function ProductDetailPage() {
                       transition: 'border-color 0.15s'
                     }}
                   >
-                    <img src={img.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={img.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 24 24' fill='none' stroke='%239090A8' stroke-width='1.5'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9l4-4 4 4 4-4 4 4'/%3E%3Ccircle cx='9' cy='14' r='2'/%3E%3C/svg%3E";
+                        e.target.style.objectFit = 'none';
+                        e.target.style.background = 'var(--color-surface-3, #F0F0F8)';
+                      }}
+                    />
                   </button>
                 ))}
               </div>
@@ -296,7 +313,21 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            <button className="btn btn-outline" style={{ width: '100%', marginBottom: 28 }} onClick={() => { handleAddToCart(); navigate('/checkout'); }}>
+            <button
+              className="btn btn-outline"
+              style={{ width: '100%', marginBottom: 28 }}
+              onClick={async () => {
+                const result = await addToCart(product.id, selectedVariant?.id, quantity);
+                if (result.success) {
+                  navigate('/checkout');
+                } else if (result.requiresAuth) {
+                  toast.error('Connexion requise pour le paiement');
+                  navigate(`/login?redirect=/products/${slug}`);
+                } else {
+                  toast.error('Impossible de lancer le paiement');
+                }
+              }}
+            >
               Acheter maintenant
             </button>
 
@@ -428,7 +459,12 @@ export default function ProductDetailPage() {
         {/* Similar Products */}
         {similar.length > 0 && (
           <section style={{ marginTop: 80 }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 24 }}>Produits similaires</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
+              Achat dans la meme categorie
+            </h2>
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: 24 }}>
+              Completez votre achat avec des produits proches de cette selection.
+            </p>
             <div className="product-grid">
               {similar.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
             </div>

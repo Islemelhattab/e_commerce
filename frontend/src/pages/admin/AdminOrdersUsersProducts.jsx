@@ -256,6 +256,7 @@ export function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({});
+  const [productImageFile, setProductImageFile] = useState(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const params = { search };
@@ -268,9 +269,38 @@ export function AdminProductsPage() {
     queryFn: () => adminProductsAPI.list(params).then(r => r.data.results || r.data),
   });
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ['admin-categories-lite'],
+    queryFn: () => adminProductsAPI.getCategories().then(r => r.data.results || r.data || []),
+  });
+
+  const { data: brands = [] } = useQuery({
+    queryKey: ['admin-brands-lite'],
+    queryFn: () => adminProductsAPI.getBrands().then(r => r.data.results || r.data || []),
+  });
+
   const saveMutation = useMutation({
-    mutationFn: (d) => d.id ? adminProductsAPI.update(d.id, d) : adminProductsAPI.create(d),
-    onSuccess: () => { toast.success('Produit sauvegardé'); qc.invalidateQueries(['admin-products']); setEditProduct(null); setShowCreate(false); },
+    mutationFn: async (d) => {
+      const { id, imageFile, ...payload } = d;
+      const res = id ? await adminProductsAPI.update(id, payload) : await adminProductsAPI.create(payload);
+      const productId = id || res.data?.id;
+
+      if (imageFile && productId) {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        formData.append('is_primary', 'true');
+        formData.append('alt_text', payload.name || 'Produit');
+        await adminProductsAPI.uploadImage(productId, formData);
+      }
+      return res;
+    },
+    onSuccess: () => {
+      toast.success('Produit sauvegardé');
+      qc.invalidateQueries(['admin-products']);
+      setEditProduct(null);
+      setShowCreate(false);
+      setProductImageFile(null);
+    },
     onError: () => toast.error('Erreur lors de la sauvegarde'),
   });
 
@@ -279,8 +309,29 @@ export function AdminProductsPage() {
     onSuccess: () => { toast.success('Produit supprimé'); qc.invalidateQueries(['admin-products']); },
   });
 
-  const handleEdit = (p) => { setForm({ ...p }); setEditProduct(p); };
-  const handleCreate = () => { setForm({ name: '', price: '', stock: 0, is_active: true, is_featured: false }); setShowCreate(true); };
+  const handleEdit = (p) => {
+    setForm({
+      ...p,
+      category: p.category || '',
+      brand: p.brand || '',
+    });
+    setProductImageFile(null);
+    setEditProduct(p);
+  };
+  const handleCreate = () => {
+    setForm({
+      name: '',
+      price: '',
+      stock: 0,
+      category: '',
+      brand: '',
+      is_active: true,
+      is_featured: false,
+      is_new: true,
+    });
+    setProductImageFile(null);
+    setShowCreate(true);
+  };
   const handleDelete = async (p) => {
     const ok = await confirm(`Supprimer "${p.name}" ? Cette action est irréversible.`);
     if (ok) deleteMutation.mutate(p.id);
@@ -288,9 +339,16 @@ export function AdminProductsPage() {
 
   const cols = [
     { key: 'name', label: 'Produit', render: (v, row) => (
-      <div>
-        <p style={{ fontWeight: 600, fontSize: 13, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</p>
-        <p style={{ fontSize: 11, color: '#9090A8', fontFamily: 'monospace' }}>{row.sku}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 8, overflow: 'hidden', background: '#F3F6FA', flexShrink: 0 }}>
+          {row.primary_image ? (
+            <img src={row.primary_image} alt={v} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : null}
+        </div>
+        <div>
+          <p style={{ fontWeight: 600, fontSize: 13, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</p>
+          <p style={{ fontSize: 11, color: '#9090A8', fontFamily: 'monospace' }}>{row.sku}</p>
+        </div>
       </div>
     )},
     { key: 'category_name', label: 'Catégorie', render: (v) => <span style={{ color: '#9090A8', fontSize: 12 }}>{v || '—'}</span> },
@@ -320,8 +378,42 @@ export function AdminProductsPage() {
         <Input label="Prix barré (DT)" type="number" step="0.001" value={form.compare_price || ''} onChange={e => setForm(f => ({...f, compare_price: e.target.value}))} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Select
+          label="Catégorie"
+          value={form.category || ''}
+          onChange={e => setForm(f => ({ ...f, category: e.target.value || null }))}
+          options={[
+            { value: '', label: 'Aucune catégorie' },
+            ...categories.map(c => ({ value: c.id, label: c.name })),
+          ]}
+        />
+        <Select
+          label="Marque"
+          value={form.brand || ''}
+          onChange={e => setForm(f => ({ ...f, brand: e.target.value || null }))}
+          options={[
+            { value: '', label: 'Aucune marque' },
+            ...brands.map(b => ({ value: b.id, label: b.name })),
+          ]}
+        />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Input label="SKU" value={form.sku || ''} onChange={e => setForm(f => ({...f, sku: e.target.value}))} />
-        <Input label="Stock" type="number" value={form.stock ?? 0} onChange={e => setForm(f => ({...f, stock: parseInt(e.target.value)}))} />
+        <Input label="Stock" type="number" value={form.stock ?? 0} onChange={e => setForm(f => ({...f, stock: parseInt(e.target.value, 10) || 0}))} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#5A5A72' }}>
+          Image principale
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setProductImageFile(e.target.files?.[0] || null)}
+          style={{ fontSize: 13 }}
+        />
+        <span style={{ fontSize: 12, color: '#9090A8' }}>
+          {productImageFile ? productImageFile.name : 'Aucun nouveau fichier sélectionné'}
+        </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#5A5A72' }}>Description</label>
@@ -369,12 +461,16 @@ export function AdminProductsPage() {
         <DataTable columns={cols} rows={data || []} loading={isLoading} emptyMessage="Aucun produit trouvé" />
       </Card>
 
-      <Modal open={!!(editProduct || showCreate)} onClose={() => { setEditProduct(null); setShowCreate(false); }}
+      <Modal open={!!(editProduct || showCreate)} onClose={() => { setEditProduct(null); setShowCreate(false); setProductImageFile(null); }}
         title={editProduct ? `Modifier: ${editProduct.name}` : 'Nouveau produit'} width={560}
         footer={
           <>
-            <Btn variant="outline" onClick={() => { setEditProduct(null); setShowCreate(false); }}>Annuler</Btn>
-            <Btn variant="primary" onClick={() => saveMutation.mutate(editProduct ? { ...form, id: editProduct.id } : form)} disabled={saveMutation.isLoading}>
+            <Btn variant="outline" onClick={() => { setEditProduct(null); setShowCreate(false); setProductImageFile(null); }}>Annuler</Btn>
+            <Btn
+              variant="primary"
+              onClick={() => saveMutation.mutate(editProduct ? { ...form, id: editProduct.id, imageFile: productImageFile } : { ...form, imageFile: productImageFile })}
+              disabled={saveMutation.isLoading}
+            >
               {saveMutation.isLoading ? 'Sauvegarde...' : 'Sauvegarder'}
             </Btn>
           </>

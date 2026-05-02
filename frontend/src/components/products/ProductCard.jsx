@@ -55,6 +55,9 @@ export default function ProductCard({ product, index = 0 }) {
     const result = await addToCart(product.id);
     if (result.success) {
       toast.success('Ajouté au panier !', { icon: null });
+    } else if (result.requiresAuth) {
+      toast.error('Connectez-vous pour ajouter au panier');
+      navigate(`/login?redirect=/products/${product.slug}`);
     } else {
       toast.error('Erreur lors de l\'ajout');
     }
@@ -79,7 +82,14 @@ export default function ProductCard({ product, index = 0 }) {
       <Link to={`/products/${product.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className="product-card__image-wrap">
           {primaryImage ? (
-            <img src={primaryImage} alt={product.name} className="product-card__image" loading="lazy" />
+            <img src={primaryImage} alt={product.name} className="product-card__image" loading="lazy" 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 24 24' fill='none' stroke='%239090A8' stroke-width='1.5'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9l4-4 4 4 4-4 4 4'/%3E%3Ccircle cx='9' cy='14' r='2'/%3E%3C/svg%3E";
+                e.target.style.objectFit = 'none';
+                e.target.style.background = 'var(--color-surface-3, #F0F0F8)';
+              }}
+            />
           ) : (
             <div className="product-card__image" style={{ background: 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-border-dark)" strokeWidth="1.5">

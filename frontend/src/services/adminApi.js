@@ -57,6 +57,8 @@ export const adminProductsAPI = {
   }),
   updateStock: (id, stock) => adminApi.patch(`/products/${id}/update_stock/`, { stock }),
   exportCsv: () => `${API_BASE}/admin/products/export_csv/`,
+  getCategories: () => axios.get(`${API_BASE}/categories/`),
+  getBrands: () => axios.get(`${API_BASE}/brands/`),
 };
 
 export const adminOrdersAPI = {
