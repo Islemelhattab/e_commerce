@@ -242,7 +242,7 @@ Email: {user_email or 'Non fourni'}
 Conversation:
 {conversation}
 
-Répondre à: {user_email or 'Pas d\'email fourni'}
+Répondre à: {user_email or "Pas d'email fourni"}
 """,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[settings.DEFAULT_FROM_EMAIL],

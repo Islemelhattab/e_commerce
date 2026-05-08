@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'apps.products',
     'apps.orders',
     'apps.cart',
-    'apps.payments',
+   # 'apps.payments',
     'apps.reviews',
     'apps.notifications',
     'apps.coupons',
@@ -66,7 +66,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME', default='ecommerce_db'),
         'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default='chiraz'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
     }
@@ -129,7 +129,7 @@ CHANNEL_LAYERS = {
         'CONFIG': {'hosts': [REDIS_URL]},
     }
 }
-
+ASGI_APPLICATION = "config.asgi.application"
 # Stripe
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
