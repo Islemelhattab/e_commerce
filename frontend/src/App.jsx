@@ -35,6 +35,26 @@ import { AdminOrdersPage, AdminUsersPage, AdminProductsPage } from './pages/admi
 import { AdminReviewsPage, AdminReturnsPage, AdminCouponsPage, AdminNewsletterPage, AdminBannersPage, AdminReportsPage } from './pages/admin/AdminOtherPages';
 import AdminChatbotPage from './pages/admin/AdminChatbotPage';
 
+import ErpLayout   from './components/erp/ErpLayout';
+import ErpDashboard from './pages/erp/ErpDashboard';
+ 
+// ERP Pages — Achats
+import { SuppliersPage, PurchaseOrdersPage, InvoicesPage }
+  from './pages/erp/PurchasingPages';
+ 
+// ERP Pages — Comptabilité
+import { AccountingPage, BalancePage, TVAPage, PeriodsPage }
+  from './pages/erp/AccountingPages';
+ 
+// ERP Pages — RH
+import { EmployeesPage, LeavesPage, PayrollPage }
+  from './pages/erp/HRPages';
+ 
+// Portail Fournisseur
+import { SupplierLayout, SupplierOrdersPage, SupplierInvoicesPage }
+  from './pages/supplier/SupplierPortal';
+
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false } },
 });
@@ -51,6 +71,27 @@ const AdminRoute = ({ children }) => {
   if (!user?.is_staff) return <Navigate to="/" replace />;
   return children;
 };
+
+const ErpRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to='/login?redirect=/erp' replace />;
+  const groups = user?.groups || [];
+  const hasErpAccess = user?.is_staff
+    || groups.includes('Comptable')
+    || groups.includes('Responsable RH');
+  if (!hasErpAccess) return <Navigate to='/' replace />;
+  return children;
+};
+ 
+const SupplierRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to='/login?redirect=/supplier' replace />;
+  const groups = user?.groups || [];
+  if (!groups.includes('Fournisseur') && !user?.is_staff)
+    return <Navigate to='/' replace />;
+  return children;
+};
+
 
 const AuthRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -97,6 +138,29 @@ export default function App() {
             <Route path="reports" element={<AdminReportsPage />} />
             <Route path="chatbot" element={<AdminChatbotPage />} />
           </Route>
+
+           
+          {/* ── ERP (Achats + Compta + RH) ── */}
+          <Route path='/erp' element={<ErpRoute><ErpLayout /></ErpRoute>}>
+            <Route index           element={<ErpDashboard />} />
+            <Route path='purchasing' element={<PurchaseOrdersPage />} />
+            <Route path='suppliers'  element={<SuppliersPage />} />
+            <Route path='invoices'   element={<InvoicesPage />} />
+            <Route path='accounting' element={<AccountingPage />} />
+            <Route path='balance'    element={<BalancePage />} />
+            <Route path='tva'        element={<TVAPage />} />
+            <Route path='periods'    element={<PeriodsPage />} />
+            <Route path='employees'  element={<EmployeesPage />} />
+            <Route path='leaves'     element={<LeavesPage />} />
+            <Route path='payroll'    element={<PayrollPage />} />
+          </Route>
+          
+          {/* ── Portail Fournisseur ── */}
+          <Route path='/supplier' element={<SupplierRoute><SupplierLayout /></SupplierRoute>}>
+            <Route index           element={<SupplierOrdersPage />} />
+            <Route path='invoices' element={<SupplierInvoicesPage />} />
+          </Route>
+
 
           {/* SHOP (with nav/footer/chatbot) */}
           <Route path="/*" element={
