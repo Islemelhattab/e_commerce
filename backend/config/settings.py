@@ -35,7 +35,17 @@ INSTALLED_APPS = [
     'apps.shipping',
     'apps.admin_api',
     'apps.chatbot',
+    'apps.purchasing',
+    'apps.accounting.apps.AccountingConfig',
+    'apps.hr',
 ]
+
+ERP_ROLES = {
+    'Fournisseur':    ['view_purchaseorder', 'add_supplierinvoice'],
+    'Comptable':      ['view_journalentry', 'change_journalentry', 'add_journalentry'],
+    'Responsable RH': ['add_employee', 'change_employee', 'add_payroll', 'change_leaverequest'],
+}
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
