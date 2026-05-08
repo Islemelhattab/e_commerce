@@ -35,7 +35,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             email_verification_token=token,
             is_email_verified=False
         )
-        # Send verification email
         send_mail(
             'Vérification de votre compte ShopWave',
             f'Cliquez ici pour vérifier votre compte: {settings.FRONTEND_URL}/verify-email/{token}',
@@ -49,21 +48,28 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.ReadOnlyField(source='get_full_name')
     avatar_url = serializers.SerializerMethodField()
+    # FIX: expose groups as list of names so frontend can check ERP/supplier access
+    groups = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'phone', 'cin', 'first_name', 'last_name',
             'full_name', 'avatar', 'avatar_url', 'date_of_birth',
-            'is_email_verified', 'is_phone_verified', 'date_joined'
+            'is_email_verified', 'is_phone_verified', 'date_joined',
+            # FIX: added is_staff and groups so /admin and /erp routes work in the frontend
+            'is_staff', 'groups',
         ]
-        read_only_fields = ['id', 'email', 'is_email_verified', 'date_joined']
+        read_only_fields = ['id', 'email', 'is_email_verified', 'date_joined', 'is_staff', 'groups']
 
     def get_avatar_url(self, obj):
         request = self.context.get('request')
         if obj.avatar and request:
             return request.build_absolute_uri(obj.avatar.url)
         return None
+
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -181,6 +187,8 @@ class ChangePasswordView(generics.UpdateAPIView):
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
+    # FIX: disable pagination so the frontend receives a plain list, not {count, results:[]}
+    pagination_class = None
 
     def get_queryset(self):
         from apps.users.models import Address

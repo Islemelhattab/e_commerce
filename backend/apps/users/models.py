@@ -81,7 +81,8 @@ class Address(models.Model):
 class Wishlist(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlist_items')
-    product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
+    # FIX: added related_name='wishlist_items' so Product.wishlist_items works in views
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE, related_name='wishlist_items')
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

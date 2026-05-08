@@ -4,7 +4,6 @@ from django.utils.html import format_html
 from django.db.models import Sum, Count, Avg
 from django.utils import timezone
 
-
 # ==================== USERS ADMIN ====================
 from apps.users.models import User, Address, Wishlist
 
