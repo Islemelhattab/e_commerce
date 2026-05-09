@@ -59,4 +59,13 @@ urlpatterns = [
     path('api/hr/', include('apps.hr.urls')),
     # Router
     path('api/', include(router.urls)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# FIX: serve media AND static files in development.
+# Without the staticfiles helper, Django's runserver returns HTML 404 pages
+# for /static/admin/... requests, which browsers reject with MIME-type errors.
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

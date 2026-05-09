@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCartStore, useAuthStore } from '../services/store';
 import { userAPI, shippingAPI, orderAPI } from '../services/api';
 
@@ -18,6 +18,117 @@ const PAYMENT_METHODS = [
   { id: 'cod', label: 'Paiement à la livraison', desc: 'Payez en cash à la réception' },
 ];
 
+// FIX: safely extract array from either a plain list or a paginated {results:[]} response
+const toArray = (data) => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.results)) return data.results;
+  return [];
+};
+
+// ==================== INLINE ADDRESS MODAL ====================
+function AddressModal({ onClose, onSaved }) {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    full_name: '', phone: '', address_line1: '', address_line2: '',
+    city: '', state: '', postal_code: '', country: 'Tunisie',
+    type: 'home', is_default: false,
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.full_name || !form.phone || !form.address_line1 || !form.city || !form.postal_code) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await userAPI.createAddress(form);
+      await queryClient.invalidateQueries(['addresses']);
+      toast.success('Adresse ajoutée !');
+      onSaved(res.data);
+      onClose();
+    } catch (err) {
+      toast.error('Erreur lors de l\'ajout de l\'adresse');
+    }
+    setSaving(false);
+  };
+
+  const field = (label, name, placeholder, required = true, half = false) => (
+    <div style={{ flex: half ? '1 1 calc(50% - 6px)' : '1 1 100%' }}>
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+        {label}{required && ' *'}
+      </label>
+      <input
+        className="form-input"
+        name={name}
+        value={form[name]}
+        onChange={handleChange}
+        placeholder={placeholder}
+        style={{ width: '100%' }}
+      />
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'white', borderRadius: 'var(--radius-xl)', padding: 32, width: '100%', maxWidth: 520,
+        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, margin: 0 }}>
+            Nouvelle adresse
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--color-text-muted)', lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          {field('Nom complet', 'full_name', 'Mohamed Ben Ali')}
+          {field('Téléphone', 'phone', '+216 XX XXX XXX')}
+          {field('Adresse ligne 1', 'address_line1', 'Rue, numéro...')}
+          {field('Adresse ligne 2', 'address_line2', 'Appartement, étage... (optionnel)', false)}
+
+          {field('Ville', 'city', 'Tunis', true, true)}
+          {field('Gouvernorat', 'state', 'Tunis', true, true)}
+          {field('Code postal', 'postal_code', '1000', true, true)}
+          {field('Pays', 'country', 'Tunisie', true, true)}
+
+          <div style={{ flex: '1 1 100%' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Type</label>
+            <select className="form-input" name="type" value={form.type} onChange={handleChange} style={{ width: '100%' }}>
+              <option value="home">Domicile</option>
+              <option value="work">Travail</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+
+          <div style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" id="is_default" name="is_default" checked={form.is_default} onChange={handleChange} />
+            <label htmlFor="is_default" style={{ fontSize: 14, cursor: 'pointer' }}>Définir comme adresse par défaut</label>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Annuler</button>
+          <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSubmit} disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer l\'adresse'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== CHECKOUT PAGE ====================
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, coupon, couponDiscount, clearCart } = useCartStore();
@@ -28,16 +139,20 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [notes, setNotes] = useState('');
   const [placing, setPlacing] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
 
-  const { data: addresses = [] } = useQuery({
+  // FIX: wrap r.data in toArray() to handle both plain list and paginated response
+  const { data: addressesRaw } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => userAPI.getAddresses().then(r => r.data),
   });
+  const addresses = toArray(addressesRaw);
 
-  const { data: shippingMethods = [] } = useQuery({
+  const { data: shippingRaw } = useQuery({
     queryKey: ['shipping-methods'],
     queryFn: () => shippingAPI.getMethods().then(r => r.data),
   });
+  const shippingMethods = toArray(shippingRaw);
 
   useEffect(() => {
     if (addresses.length > 0 && !selectedAddress) {
@@ -59,7 +174,9 @@ export default function CheckoutPage() {
 
   const subtotal = parseFloat(cart.subtotal || 0);
   const discount = parseFloat(couponDiscount || 0);
-  const shippingCost = selectedShipping ? (subtotal >= (selectedShipping.free_shipping_threshold || Infinity) ? 0 : parseFloat(selectedShipping.price)) : 0;
+  const shippingCost = selectedShipping
+    ? (subtotal >= (selectedShipping.free_shipping_threshold || Infinity) ? 0 : parseFloat(selectedShipping.price))
+    : 0;
   const total = subtotal - discount + shippingCost;
 
   const handlePlaceOrder = async () => {
@@ -87,6 +204,14 @@ export default function CheckoutPage() {
 
   return (
     <div style={{ padding: '40px 0 80px', background: 'var(--color-surface-2)', minHeight: '100vh' }}>
+      {/* FIX: Inline address modal — no more redirect to /account/profile */}
+      {showAddressModal && (
+        <AddressModal
+          onClose={() => setShowAddressModal(false)}
+          onSaved={(newAddr) => setSelectedAddress(newAddr)}
+        />
+      )}
+
       <div className="container" style={{ maxWidth: 960 }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -117,14 +242,24 @@ export default function CheckoutPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'flex-start' }}>
           {/* Step Content */}
           <div style={{ background: 'white', borderRadius: 'var(--radius-xl)', padding: 32, border: '1.5px solid var(--color-border)' }}>
+
             {/* STEP 0: Address */}
             {step === 0 && (
               <div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Adresse de livraison</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, margin: 0 }}>Adresse de livraison</h2>
+                  {/* FIX: opens inline modal instead of navigating away */}
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => setShowAddressModal(true)}>
+                    + Ajouter une adresse
+                  </button>
+                </div>
+
                 {addresses.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 0' }}>
                     <p style={{ color: 'var(--color-text-muted)', marginBottom: 16 }}>Aucune adresse enregistrée</p>
-                    <button className="btn btn-primary" onClick={() => navigate('/account/profile')}>Ajouter une adresse</button>
+                    <button className="btn btn-primary" onClick={() => setShowAddressModal(true)}>
+                      Ajouter une adresse
+                    </button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
@@ -168,38 +303,44 @@ export default function CheckoutPage() {
             {step === 1 && (
               <div>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Mode de livraison</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                  {shippingMethods.map(method => {
-                    const isFree = subtotal >= (method.free_shipping_threshold || Infinity);
-                    return (
-                      <div
-                        key={method.id}
-                        onClick={() => setSelectedShipping(method)}
-                        style={{
-                          padding: 20, border: `2px solid ${selectedShipping?.id === method.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                          borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s',
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                        }}
-                      >
-                        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${selectedShipping?.id === method.id ? 'var(--color-primary)' : 'var(--color-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {selectedShipping?.id === method.id && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                {shippingMethods.length === 0 ? (
+                  <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '30px 0' }}>
+                    Aucune méthode de livraison disponible.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                    {shippingMethods.map(method => {
+                      const isFree = subtotal >= (method.free_shipping_threshold || Infinity);
+                      return (
+                        <div
+                          key={method.id}
+                          onClick={() => setSelectedShipping(method)}
+                          style={{
+                            padding: 20, border: `2px solid ${selectedShipping?.id === method.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          }}
+                        >
+                          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${selectedShipping?.id === method.id ? 'var(--color-primary)' : 'var(--color-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {selectedShipping?.id === method.id && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                            </div>
+                            <div>
+                              <p style={{ fontWeight: 700, fontSize: 15 }}>{method.name}</p>
+                              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                                {method.estimated_days_min}–{method.estimated_days_max} jours ouvrables
+                                {method.description && ` • ${method.description}`}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p style={{ fontWeight: 700, fontSize: 15 }}>{method.name}</p>
-                            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                              {method.estimated_days_min}–{method.estimated_days_max} jours ouvrables
-                              {method.description && ` • ${method.description}`}
-                            </p>
-                          </div>
+                          <span style={{ fontWeight: 700, fontSize: 16, color: isFree ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                            {isFree ? 'Gratuit' : `${parseFloat(method.price).toFixed(3)} DT`}
+                          </span>
                         </div>
-                        <span style={{ fontWeight: 700, fontSize: 16, color: isFree ? 'var(--color-success)' : 'var(--color-primary)' }}>
-                          {isFree ? 'Gratuit' : `${parseFloat(method.price).toFixed(3)} DT`}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setStep(0)}>← Retour</button>
                   <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => setStep(2)} disabled={!selectedShipping}>Continuer →</button>

@@ -3,7 +3,6 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 from django.db.models import Sum, Count, Avg
 from django.utils import timezone
-from .models import User
 
 # ==================== USERS ADMIN ====================
 from apps.users.models import User, Address, Wishlist

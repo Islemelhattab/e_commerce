@@ -9,6 +9,9 @@ export const useAuthStore = create(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      // FIX: track whether the initial profile fetch is in progress
+      // so route guards wait instead of redirecting immediately
+      isLoadingUser: false,
 
       login: async (credentials) => {
         set({ isLoading: true });
@@ -52,16 +55,26 @@ export const useAuthStore = create(
       loadUser: async () => {
         const token = localStorage.getItem('access_token');
         if (!token) return;
+        set({ isLoadingUser: true });
         try {
           const res = await userAPI.getProfile();
-          set({ user: res.data, isAuthenticated: true });
+          set({ user: res.data, isAuthenticated: true, isLoadingUser: false });
         } catch {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
+          set({ user: null, isAuthenticated: false, isLoadingUser: false });
         }
       },
     }),
-    { name: 'auth-storage', partialize: (state) => ({ isAuthenticated: state.isAuthenticated }) }
+    {
+      name: 'auth-storage',
+      // FIX: also persist user so is_staff/groups survive a page refresh
+      // (loadUser will refresh it from the server in the background)
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+      }),
+    }
   )
 );
 

@@ -86,21 +86,28 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false } },
 });
 
+// FIX: Route guards now show a blank loader while the profile is being fetched
+// (isLoadingUser = true) instead of immediately redirecting to "/" or "/login".
+// This prevents the flash-redirect when the page is refreshed.
+
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoadingUser } = useAuthStore();
   const location = useLocation();
+  if (isLoadingUser) return null; // wait for profile fetch
   return isAuthenticated ? children : <Navigate to={`/login?redirect=${location.pathname}`} replace />;
 };
 
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoadingUser } = useAuthStore();
+  if (isLoadingUser) return null; // wait – don't redirect while fetching
   if (!isAuthenticated) return <Navigate to="/login?redirect=/admin" replace />;
   if (!user?.is_staff) return <Navigate to="/" replace />;
   return children;
 };
 
 const ErpRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoadingUser } = useAuthStore();
+  if (isLoadingUser) return null;
   if (!isAuthenticated) return <Navigate to='/login?redirect=/erp' replace />;
   const groups = user?.groups || [];
   const hasErpAccess = user?.is_staff
@@ -109,16 +116,16 @@ const ErpRoute = ({ children }) => {
   if (!hasErpAccess) return <Navigate to='/' replace />;
   return children;
 };
- 
+
 const SupplierRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoadingUser } = useAuthStore();
+  if (isLoadingUser) return null;
   if (!isAuthenticated) return <Navigate to='/login?redirect=/supplier' replace />;
   const groups = user?.groups || [];
   if (!groups.includes('Fournisseur') && !user?.is_staff)
     return <Navigate to='/' replace />;
   return children;
 };
-
 
 const AuthRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -144,7 +151,9 @@ function WSInitializer() {
 
 export default function App() {
   const { loadUser } = useAuthStore();
-  useEffect(() => { if (localStorage.getItem('access_token')) loadUser(); }, []);
+  useEffect(() => {
+    if (localStorage.getItem('access_token')) loadUser();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -166,8 +175,7 @@ export default function App() {
             <Route path="chatbot" element={<AdminChatbotPage />} />
           </Route>
 
-           
-          {/* ── ERP (Achats + Compta + RH) ── */}
+          {/* ERP (Achats + Compta + RH) */}
           <Route path='/erp' element={<ErpRoute><ErpLayout /></ErpRoute>}>
             <Route index           element={<ErpDashboard />} />
             <Route path='purchasing' element={<PurchaseOrdersPage />} />
@@ -181,13 +189,12 @@ export default function App() {
             <Route path='leaves'     element={<LeavesPage />} />
             <Route path='payroll'    element={<PayrollPage />} />
           </Route>
-          
-          {/* ── Portail Fournisseur ── */}
+
+          {/* Portail Fournisseur */}
           <Route path='/supplier' element={<SupplierRoute><SupplierLayout /></SupplierRoute>}>
             <Route index           element={<SupplierOrdersPage />} />
             <Route path='invoices' element={<SupplierInvoicesPage />} />
           </Route>
-
 
           {/* SHOP (with nav/footer/chatbot) */}
           <Route path="/*" element={
