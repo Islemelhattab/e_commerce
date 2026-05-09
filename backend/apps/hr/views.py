@@ -1,8 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
 from django.utils import timezone
+
+from apps.permissions import IsHRUser  # FIX: was IsAdminUser — blocked all non-staff users
 
 from .models import Department, Employee, LeaveRequest, Payroll
 from .serializers import (
@@ -14,14 +15,14 @@ from .serializers import (
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.filter(is_active=True).prefetch_related('employees')
     serializer_class = DepartmentSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsHRUser]
     search_fields = ['name', 'code']
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related('department').all()
     serializer_class = EmployeeSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsHRUser]
     filterset_fields = ['status', 'department', 'contract_type']
     search_fields = ['first_name', 'last_name', 'employee_id', 'email']
 
@@ -49,7 +50,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.select_related('employee', 'reviewed_by').all()
     serializer_class = LeaveRequestSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsHRUser]
     filterset_fields = ['status', 'leave_type', 'employee']
 
     @action(detail=True, methods=['post'])
@@ -77,7 +78,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 
 class PayrollViewSet(viewsets.ModelViewSet):
     queryset = Payroll.objects.select_related('employee').all()
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsHRUser]
     filterset_fields = ['status', 'employee', 'period_year', 'period_month']
 
     def get_serializer_class(self):
@@ -111,7 +112,6 @@ class PayrollViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def generate_batch(self, request):
-        """Génère les fiches de paie pour tous les employés actifs d'un mois."""
         month = request.data.get('month', timezone.now().month)
         year = request.data.get('year', timezone.now().year)
         employees = Employee.objects.filter(status='active')
@@ -135,14 +135,10 @@ class PayrollViewSet(viewsets.ModelViewSet):
             else:
                 skipped.append(str(emp))
 
-        return Response({
-            'month': month, 'year': year,
-            'created': created, 'skipped': skipped,
-        })
+        return Response({'month': month, 'year': year, 'created': created, 'skipped': skipped})
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Résumé de la masse salariale pour un mois donné."""
         month = request.query_params.get('month', timezone.now().month)
         year  = request.query_params.get('year', timezone.now().year)
         payrolls = Payroll.objects.filter(period_month=month, period_year=year)

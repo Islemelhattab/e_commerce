@@ -105,6 +105,7 @@ from rest_framework.generics import ListAPIView
 
 class ShippingMethodListView(ListAPIView):
     serializer_class = ShippingMethodSerializer
+    pagination_class = None  # FIX: return plain list, not {count, results:[]}
 
     def get_queryset(self):
         from apps.shipping.models import ShippingMethod

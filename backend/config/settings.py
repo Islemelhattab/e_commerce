@@ -46,7 +46,6 @@ ERP_ROLES = {
     'Responsable RH': ['add_employee', 'change_employee', 'add_payroll', 'change_leaverequest'],
 }
 
-
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -60,6 +59,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 AUTH_USER_MODEL = 'users.User'
+
+# FIX: Added ASGI_APPLICATION so Django Channels routes WebSocket traffic
+# correctly. Without this, `daphne` doesn't know which ASGI app to use
+# and `runserver` silently falls back to WSGI (returning 404 for /ws/).
+ASGI_APPLICATION = 'config.asgi.application'
+WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -116,6 +121,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@shopwave.com')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
 # Redis & Celery
 REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
@@ -129,7 +135,7 @@ CHANNEL_LAYERS = {
         'CONFIG': {'hosts': [REDIS_URL]},
     }
 }
-ASGI_APPLICATION = "config.asgi.application"
+
 # Stripe
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')

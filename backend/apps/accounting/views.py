@@ -2,9 +2,10 @@ from decimal import Decimal
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
 from django.db.models import Sum, Q
 from django.utils import timezone
+
+from apps.permissions import IsAccountingUser  # FIX: was IsAdminUser
 
 from .models import AccountingAccount, FiscalPeriod, JournalEntry, JournalEntryLine
 from .serializers import (
@@ -16,7 +17,7 @@ from .serializers import (
 class AccountingAccountViewSet(viewsets.ModelViewSet):
     queryset = AccountingAccount.objects.all()
     serializer_class = AccountingAccountSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAccountingUser]
     filterset_fields = ['account_type', 'is_active']
     search_fields = ['code', 'name']
 
@@ -24,7 +25,7 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
 class FiscalPeriodViewSet(viewsets.ModelViewSet):
     queryset = FiscalPeriod.objects.all()
     serializer_class = FiscalPeriodSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAccountingUser]
 
     @action(detail=True, methods=['post'])
     def close(self, request, pk=None):
@@ -40,7 +41,7 @@ class FiscalPeriodViewSet(viewsets.ModelViewSet):
 
 class JournalEntryViewSet(viewsets.ModelViewSet):
     queryset = JournalEntry.objects.prefetch_related('lines__account').all()
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAccountingUser]
     filterset_fields = ['source', 'status']
     search_fields = ['entry_number', 'description']
 
@@ -54,7 +55,6 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def post_entry(self, request, pk=None):
-        """Valider une écriture comptable."""
         entry = self.get_object()
         if entry.status != 'draft':
             return Response({'error': 'Seules les écritures en brouillon peuvent être validées.'}, status=400)
@@ -66,14 +66,10 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def balance(self, request):
-        """Balance générale : solde débit/crédit par compte."""
         accounts = AccountingAccount.objects.filter(is_active=True)
         result = []
         for acc in accounts:
-            lines = JournalEntryLine.objects.filter(
-                account=acc,
-                entry__status='posted'
-            )
+            lines = JournalEntryLine.objects.filter(account=acc, entry__status='posted')
             total_debit  = lines.aggregate(s=Sum('debit'))['s']  or Decimal('0')
             total_credit = lines.aggregate(s=Sum('credit'))['s'] or Decimal('0')
             solde = total_debit - total_credit
@@ -89,7 +85,6 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def income_statement(self, request):
-        """Compte de résultat : Produits - Charges."""
         revenue_accounts = AccountingAccount.objects.filter(account_type='revenue', is_active=True)
         expense_accounts = AccountingAccount.objects.filter(account_type='expense', is_active=True)
 
@@ -97,7 +92,7 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
             lines = JournalEntryLine.objects.filter(account=acc, entry__status='posted')
             d = lines.aggregate(s=Sum('debit'))['s']  or Decimal('0')
             c = lines.aggregate(s=Sum('credit'))['s'] or Decimal('0')
-            return c - d  # crédit dominant pour produits
+            return c - d
 
         revenues = [{'code': a.code, 'name': a.name, 'amount': account_balance(a)} for a in revenue_accounts]
         expenses = [{'code': a.code, 'name': a.name, 'amount': account_balance(a)} for a in expense_accounts]
@@ -116,7 +111,6 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def tva_declaration(self, request):
-        """Déclaration TVA : TVA collectée - TVA déductible."""
         collected_acc  = AccountingAccount.objects.filter(code='445710').first()
         deductible_acc = AccountingAccount.objects.filter(code='445620').first()
 

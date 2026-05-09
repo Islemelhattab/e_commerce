@@ -23,13 +23,33 @@ adminApi.interceptors.response.use(
           return adminApi(error.config);
         } catch {
           localStorage.clear();
-          window.location.href = '/admin/login';
+          window.location.href = '/login';
         }
       }
     }
     return Promise.reject(error);
   }
 );
+
+// FIX: authenticated CSV download helper.
+// Using <a href="..."> directly sends no Authorization header → 401.
+// This fetches the file with the Bearer token and triggers a browser download.
+async function downloadCsv(path, filename) {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`${API_BASE}/admin${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error(`Export failed: ${response.status}`);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export const dashboardAPI = {
   getStats: () => adminApi.get('/dashboard/'),
@@ -56,7 +76,8 @@ export const adminProductsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   updateStock: (id, stock) => adminApi.patch(`/products/${id}/update_stock/`, { stock }),
-  exportCsv: () => `${API_BASE}/admin/products/export_csv/`,
+  // FIX: was () => `${API_BASE}/admin/products/export_csv/` — plain URL, no auth header → 401
+  exportCsv: () => downloadCsv('/products/export_csv/', 'produits.csv'),
 };
 
 export const adminOrdersAPI = {
@@ -64,7 +85,8 @@ export const adminOrdersAPI = {
   get: (id) => adminApi.get(`/orders/${id}/`),
   updateStatus: (id, data) => adminApi.post(`/orders/${id}/update_status/`, data),
   updatePayment: (id, data) => adminApi.post(`/orders/${id}/update_payment/`, data),
-  exportCsv: () => `${API_BASE}/admin/orders/export_csv/`,
+  // FIX: same issue — authenticated fetch+blob download
+  exportCsv: () => downloadCsv('/orders/export_csv/', 'commandes.csv'),
   exportPdf: () => adminApi.get('/orders/export_pdf/'),
 };
 

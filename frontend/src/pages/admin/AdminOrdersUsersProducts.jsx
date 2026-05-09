@@ -70,12 +70,10 @@ export function AdminOrdersPage() {
     <div>
       <PageHeader title="Commandes" subtitle={`${data?.length || 0} commandes`}
         actions={
-          <a href={adminOrdersAPI.exportCsv()} download>
-            <Btn variant="outline" size="sm">
+            <Btn variant="outline" size="sm" onClick={() => adminOrdersAPI.exportCsv().catch(console.error)}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exporter CSV
             </Btn>
-          </a>
         }
       />
 
@@ -351,9 +349,7 @@ export function AdminProductsPage() {
       <PageHeader title="Produits" subtitle={`${data?.length || 0} produits`}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
-            <a href={adminProductsAPI.exportCsv()} download>
-              <Btn variant="outline" size="sm">Exporter CSV</Btn>
-            </a>
+            <Btn variant="outline" size="sm" onClick={() => adminProductsAPI.exportCsv().catch(console.error)}>Exporter CSV</Btn>
             <Btn variant="primary" size="sm" onClick={handleCreate}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Ajouter un produit

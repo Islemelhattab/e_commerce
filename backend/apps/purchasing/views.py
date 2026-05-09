@@ -1,8 +1,10 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+
+from apps.permissions import IsPurchasingUser, IsSupplierUser  # FIX: was IsAdminUser
 
 from .models import Supplier, PurchaseOrder, PurchaseOrderLine, SupplierInvoice
 from .serializers import (
@@ -15,14 +17,14 @@ from .serializers import (
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsPurchasingUser]
     search_fields = ['name', 'code', 'email']
     filterset_fields = ['status', 'currency']
 
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.select_related('supplier').prefetch_related('lines').all()
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsPurchasingUser]
     filterset_fields = ['status', 'supplier']
     search_fields = ['po_number', 'supplier__name']
 
@@ -36,18 +38,15 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def send(self, request, pk=None):
-        """Envoyer le BC au fournisseur (draft → sent)."""
         order = self.get_object()
         if order.status != 'draft':
-            return Response({'error': 'Seul un bon en brouillon peut être envoyé.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Seul un bon en brouillon peut être envoyé.'}, status=status.HTTP_400_BAD_REQUEST)
         order.status = 'sent'
         order.save()
         return Response(PurchaseOrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
-        """Fournisseur confirme réception du BC (sent → confirmed)."""
         order = self.get_object()
         if order.status != 'sent':
             return Response({'error': 'Le BC doit être en statut envoyé.'}, status=400)
@@ -58,7 +57,6 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def receive(self, request, pk=None):
-        """Réceptionner les marchandises et mettre à jour les stocks."""
         order = self.get_object()
         if order.status not in ['confirmed', 'partial']:
             return Response({'error': 'Le BC doit être confirmé pour réception.'}, status=400)
@@ -72,12 +70,9 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 qty = item.get('quantity_received', 0)
                 line.quantity_received += qty
                 line.save()
-
-                # Mise à jour du stock produit
                 product = line.product
                 product.stock += int(qty)
                 product.save()
-
                 if line.quantity_received < line.quantity_ordered:
                     all_received = False
             except PurchaseOrderLine.DoesNotExist:
@@ -101,12 +96,11 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 class SupplierInvoiceViewSet(viewsets.ModelViewSet):
     queryset = SupplierInvoice.objects.select_related('supplier', 'purchase_order').all()
     serializer_class = SupplierInvoiceSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsPurchasingUser]
     filterset_fields = ['status', 'supplier']
 
     @action(detail=True, methods=['post'])
     def validate(self, request, pk=None):
-        """Comptable valide la facture fournisseur."""
         invoice = self.get_object()
         if invoice.status != 'pending':
             return Response({'error': 'Facture déjà traitée.'}, status=400)
@@ -128,7 +122,7 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
 class SupplierPortalOrdersView(viewsets.ReadOnlyModelViewSet):
     """Vue réservée aux fournisseurs pour consulter leurs BCs."""
     serializer_class = PurchaseOrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSupplierUser]
 
     def get_queryset(self):
         user = self.request.user
@@ -140,7 +134,7 @@ class SupplierPortalOrdersView(viewsets.ReadOnlyModelViewSet):
 class SupplierPortalInvoiceView(viewsets.ModelViewSet):
     """Vue réservée aux fournisseurs pour soumettre leurs factures."""
     serializer_class = SupplierInvoiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSupplierUser]
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
