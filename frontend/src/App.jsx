@@ -2,57 +2,84 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from '../../../ecommerce/frontend/src/services/store';
-import useWebSocket from '../../../ecommerce/frontend/src/hooks/useWebSocket';
+import { useAuthStore } from "./services/store";
+import useWebSocket from "./hooks/useWebSocket";
 import './styles/main.css';
 
 // Shop Layout
-import Navbar from '../../../ecommerce/frontend/src/components/layout/Navbar';
-import Footer from '../../../ecommerce/frontend/src/components/layout/Footer';
-import CartDrawer from '../../../ecommerce/frontend/src/components/cart/CartDrawer';
-import ChatWidget from '../../../ecommerce/frontend/src/components/chat/ChatWidget';
+import Navbar from "./components/layouts/Navbar";
+import Footer from "./components/layouts/Footer";
+import CartDrawer from "./components/cart/CartDrawer";
+import ChatWidget from "./components/chat/ChatWidget";
 
 // Shop Pages
-import HomePage from '../../../ecommerce/frontend/src/pages/HomePage';
-import ProductsPage from '../../../ecommerce/frontend/src/pages/ProductsPage';
-import ProductDetailPage from '../../../ecommerce/frontend/src/pages/ProductDetailPage';
-import LoginPage from '../../../ecommerce/frontend/src/pages/auth/LoginPage';
-import RegisterPage from '../../../ecommerce/frontend/src/pages/auth/RegisterPage';
-import ForgotPasswordPage from '../../../ecommerce/frontend/src/pages/auth/ForgotPasswordPage';
-import CartPage from '../../../ecommerce/frontend/src/pages/CartPage';
-import CheckoutPage from '../../../ecommerce/frontend/src/pages/CheckoutPage';
-import OrderSuccessPage from '../../../ecommerce/frontend/src/pages/OrderSuccessPage';
-import OrdersPage from '../../../ecommerce/frontend/src/pages/account/OrdersPage';
-import OrderDetailPage from '../../../ecommerce/frontend/src/pages/account/OrderDetailPage';
-import ProfilePage from '../../../ecommerce/frontend/src/pages/account/ProfilePage';
-import WishlistPage from '../../../ecommerce/frontend/src/pages/account/WishlistPage';
-import NotificationsPage from '../../../ecommerce/frontend/src/pages/account/NotificationsPage';
+import HomePage from "./pages/HomePage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
+import OrdersPage from "./pages/account/OrdersPage";
+import OrderDetailPage from "./pages/account/OrderDetailPage";
+import ProfilePage from "./pages/account/ProfilePage";
+import WishlistPage from "./pages/account/WishlistPage";
+import NotificationsPage from "./pages/account/NotificationsPage";
 
 // Admin
-import AdminLayout from './components/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import { AdminOrdersPage, AdminUsersPage, AdminProductsPage } from './pages/admin/AdminOrdersUsersProducts';
-import { AdminReviewsPage, AdminReturnsPage, AdminCouponsPage, AdminNewsletterPage, AdminBannersPage, AdminReportsPage } from './pages/admin/AdminOtherPages';
-import AdminChatbotPage from './pages/admin/AdminChatbotPage';
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import {
+  AdminOrdersPage,
+  AdminUsersPage,
+  AdminProductsPage
+} from "./pages/admin/AdminOrdersUsersProducts";
 
-import ErpLayout   from './components/erp/ErpLayout';
-import ErpDashboard from './pages/erp/ErpDashboard';
- 
-// ERP Pages — Achats
-import { SuppliersPage, PurchaseOrdersPage, InvoicesPage }
-  from './pages/erp/PurchasingPages';
- 
-// ERP Pages — Comptabilité
-import { AccountingPage, BalancePage, TVAPage, PeriodsPage }
-  from './pages/erp/AccountingPages';
- 
-// ERP Pages — RH
-import { EmployeesPage, LeavesPage, PayrollPage }
-  from './pages/erp/HRPages';
- 
-// Portail Fournisseur
-import { SupplierLayout, SupplierOrdersPage, SupplierInvoicesPage }
-  from './pages/supplier/SupplierPortal';
+import {
+  AdminReviewsPage,
+  AdminReturnsPage,
+  AdminCouponsPage,
+  AdminNewsletterPage,
+  AdminBannersPage,
+  AdminReportsPage
+} from "./pages/admin/AdminOtherPages";
+
+import AdminChatbotPage from "./pages/admin/AdminChatbotPage";
+
+// ERP
+import ErpLayout from "./components/erp/ErpLayout";
+import ErpDashboard from "./pages/erp/ErpDashboard";
+
+// ERP - Achats
+import {
+  SuppliersPage,
+  PurchaseOrdersPage,
+  InvoicesPage
+} from "./pages/erp/PurchasingPages";
+
+// ERP - Comptabilité
+import {
+  AccountingPage,
+  BalancePage,
+  TVAPage,
+  PeriodsPage
+} from "./pages/erp/AccountingPages";
+
+// ERP - RH
+import {
+  EmployeesPage,
+  LeavesPage,
+  PayrollPage
+} from "./pages/erp/HRPages";
+
+// Supplier Portal
+import {
+  SupplierLayout,
+  SupplierOrdersPage,
+  SupplierInvoicesPage
+} from "./pages/supplier/SupplierPortal";
 
 
 const queryClient = new QueryClient({
